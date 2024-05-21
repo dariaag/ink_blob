@@ -49,7 +49,7 @@ impl SubsquidApi {
         let url = format!("{}/height", self.config.base_url);
 
         let response: Value = self.client.get(&url).send().await?.json().await?;
-        print!("{:?}", response);
+
         response
             .as_u64()
             .ok_or_else(|| Error::msg("Invalid response format"))
@@ -57,7 +57,7 @@ impl SubsquidApi {
 
     pub async fn get_worker_url(&self, block_number: u64) -> Result<String, Error> {
         let url = format!("{}/{}/worker", self.config.base_url, block_number);
-        println!("{:?}", url);
+
         let response: String = self.client.get(&url).send().await?.text().await?;
         response
             .parse()
@@ -69,8 +69,6 @@ impl SubsquidApi {
         worker_url: &str,
         query: Value,
     ) -> Result<(Vec<Value>, u64), Error> {
-        print!("{:?}", worker_url);
-        println!("{:?}", query);
         let json_query = add_from_block(query, from_block);
         let response: String = self
             .client
@@ -81,7 +79,7 @@ impl SubsquidApi {
             .text()
             .await?;
         let data: Value = serde_json::from_str(&response)?;
-        println!("{:?}", data);
+
         let blocks = data
             .as_array()
             .ok_or_else(|| Error::msg("Invalid JSON format: Expected an array"))?;
@@ -122,6 +120,7 @@ impl SubsquidApi {
             let _permit = self.acquire_permit().await;
 
             let worker_url = self.get_worker_url(current_block).await?;
+
             let (data, last_block) = self
                 .fetch_data(current_block, &worker_url, query.clone())
                 .await?;
@@ -174,8 +173,7 @@ mod tests {
         let worker_url = api.get_worker_url(1).await.unwrap();
         let query = json!({});
         let (data, last_block) = api.fetch_data(1, &worker_url, query).await.unwrap();
-        println!("DATA");
-        println!("{:?}", data);
+
         assert!(!data.is_empty(), "Data should not be empty");
         assert!(last_block > 0, "Last block should be greater than 0");
     }

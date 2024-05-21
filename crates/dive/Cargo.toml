@@ -11,3 +11,4 @@ serde_json = { workspace = true }
 anyhow = { workspace = true }
 tokio = { workspace = true }
 governor = { workspace = true }
+indexmap = { workspace = true }

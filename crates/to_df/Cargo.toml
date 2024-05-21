@@ -6,3 +6,8 @@ license.workspace = true
 exclude.workspace = true
 
 [dependencies]
+serde_json = { workspace = true }
+polars = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+dive = { path = "../dive" }
