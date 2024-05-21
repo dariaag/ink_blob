@@ -4,6 +4,7 @@ use anyhow::Error;
 use anyhow::Result;
 use polars::prelude::{NamedFrom, Series};
 use serde_json::Value;
+use std::collections::HashSet;
 
 pub fn hex_str_to_u64(hex_str: &str) -> Result<u64, std::num::ParseIntError> {
     let trimmed_hex_str = hex_str.trim_start_matches("0x");
@@ -474,4 +475,31 @@ pub fn create_columns_from_field_data(
         _ => panic!("{} not found", field),
     });
     columns
+}
+
+pub fn extract_fields<'a>(query: &'a Value) -> Vec<&'a str> {
+    if let Some(fields) = query.get("fields") {
+        if let Some(log_fields) = fields.get("log") {
+            return parse_field(log_fields);
+        }
+        if let Some(tx_fields) = fields.get("tx") {
+            return parse_field(tx_fields);
+        }
+        if let Some(trace_fields) = fields.get("trace") {
+            return parse_field(trace_fields);
+        }
+    }
+    Vec::new()
+}
+
+pub fn parse_field<'a>(field: &'a Value) -> Vec<&'a str> {
+    let mut set = HashSet::new();
+    if let Some(obj) = field.as_object() {
+        for (key, value) in obj {
+            if let Some(true) = value.as_bool() {
+                set.insert(key.as_str());
+            }
+        }
+    }
+    set.into_iter().collect()
 }

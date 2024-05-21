@@ -1,3 +1,4 @@
+use crate::utils;
 use anyhow::Error;
 use governor::{
     clock::DefaultClock,
@@ -5,13 +6,12 @@ use governor::{
     state::{direct::NotKeyed, InMemoryState},
     RateLimiter,
 };
+use polars::prelude::*;
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 use utils::add_from_block;
-
-use crate::utils;
 #[derive(Clone, Debug)]
 pub struct SubsquidApiConfig {
     pub base_url: String,
@@ -130,6 +130,19 @@ impl SubsquidApi {
 
         Ok(all_data)
     }
+
+    /*   pub async fn get_as_df(
+        &self,
+        query: Value,
+        start_block: u64,
+        end_block: u64,
+    ) -> Result<DataFrame, Error> {
+        let data = self
+            .get_data_in_range(query, start_block, end_block)
+            .await?;
+        let df =
+
+    } */
 }
 #[cfg(test)]
 mod tests {

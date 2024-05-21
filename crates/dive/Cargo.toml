@@ -12,3 +12,4 @@ anyhow = { workspace = true }
 tokio = { workspace = true }
 governor = { workspace = true }
 indexmap = { workspace = true }
+polars = { workspace = true }
