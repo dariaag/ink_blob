@@ -15,14 +15,15 @@ Currently supports:
 
 ## Datasets
 
-- Logs have the following fields:
-  - address
-  - topics
-  - data
-  - log_index
-  - block
-  - transaction_hash
-  - transaction_index
+Logs have the following fields:
+
+- address
+- topics
+- data
+- log_index
+- block
+- transaction_hash
+- transaction_index
 
 and support the following filters:
 
@@ -32,18 +33,19 @@ and support the following filters:
 - topic2
 - topic3
 
-- Transactions have the following fields:
-  - block_hash
-  - block_number
-  - from
-  - gas
-  - gas_price
-  - hash
-  - input
-  - nonce
-  - to
-  - transaction_index
-  - value
+Transactions have the following fields:
+
+- block_hash
+- block_number
+- from
+- gas
+- gas_price
+- hash
+- input
+- nonce
+- to
+- transaction_index
+- value
 
 and support the following filters:
 
@@ -188,3 +190,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
 ```
+
+### TODO
+
+- [x] tx
+- [x] logs
+- [x] blocks
+- [ ] traces
+- [ ] state diffs
+- [ ] joint datasets
+- [ ] CLI
+- [ ] progress bar
