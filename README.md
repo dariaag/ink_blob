@@ -3,33 +3,60 @@ Sure, here's a `README.md` file for the Datasource Library:
 ````markdown
 # Datasource Library
 
-This Rust library provides a way to interact with a remote API to fetch blockchain data, with support for rate limiting and concurrency control. It includes tools to build complex queries and convert the data into a Polars DataFrame.
+This Rust library provides a way to interact with a remote API to fetch blockchain data, with support for rate limiting and concurrency control. It includes tools to build complex queries and convert the data into a Polars DataFrame. The library is a work in progeress. Feel free to raise an issue or drop a line on Twitter if you have any problems or suggestions.
 
 ## Features
 
-- Fetch data from a remote API with rate limiting and concurrency control.
+- Fetch data from Subsquid data-lake API with rate limiting and concurrency control.
 - Build complex queries using a query builder.
 - Convert fetched data into a Polars DataFrame.
 
-## Installation
+Currently supports:
 
-To use this library, add the following dependencies to your `Cargo.toml`:
+- logs
+- transactions
 
-```toml
-[dependencies]
-reqwest = "0.11"
-tokio = { version = "1", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-polars = { version = "0.18", features = ["serde"] }
-governor = "0.4"
-anyhow = "1.0"
-```
-````
+## Datasets
+
+- Logs have the following fields:
+  - address
+  - topics
+  - data
+  - log_index
+  - block
+  - transaction_hash
+  - transaction_index
+
+and support the following filters:
+
+- address
+- topic0
+- topic1
+- topic2
+- topic3
+
+- Transactions have the following fields:
+  - block_hash
+  - block_number
+  - from
+  - gas
+  - gas_price
+  - hash
+  - input
+  - nonce
+  - to
+  - transaction_index
+  - value
+
+and support the following filters:
+
+- from
+- to
+- sighash
 
 ## Usage
 
-Here are some examples of how to use the library.
+Here are some examples of how to use this tool.
 
 ### Create a Datasource Configuration
 
@@ -43,7 +70,7 @@ use governor::{
 };
 use tokio::sync::Semaphore;
 
-let config = DatasourceConfig::new("https://api.example.com".to_string(), 10);
+let config = DatasourceConfig::new("https://v2.archive.subsquid.io/network/ethereum-mainnet".to_string(), 10);
 ```
 
 ### Initialize a Datasource
@@ -82,22 +109,20 @@ query_builder
 let query = query_builder.build();
 ```
 
-### Fetch Data in a Range
+### Fetch Data in a Range of Blocks as JSON
 
 ```rust
 let start_block = 14000005;
 let end_block = 14000006;
 let data = datasource.get_data_in_range(query.clone(), start_block, end_block).await.unwrap();
 
-println!("{:?}", data);
 ```
 
-### Convert Data to DataFrame
+### Fetch as DataFrame
 
 ```rust
 let df = datasource.get_as_df(query, start_block, end_block).await.unwrap();
 
-println!("{:?}", df);
 ```
 
 ## Complete Example
@@ -166,3 +191,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 
 ```
+````

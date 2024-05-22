@@ -122,9 +122,9 @@ impl Datasource {
             .text()
             .await?;
         let data: Value = serde_json::from_str(&response)?;
-        if data.as_array().is_none() {
+        /* if data.as_array().is_none() {
             println!("DATA: {:?}", data);
-        }
+        } */
         let blocks = data
             .as_array()
             .ok_or_else(|| Error::msg("Invalid JSON format: Expected an array"))?;
@@ -168,7 +168,7 @@ impl Datasource {
     ) -> Result<Vec<Value>, Error> {
         let mut current_block = start_block;
         let mut all_data = Vec::new();
-        println!("QUERY: {:?}", query);
+
         while current_block <= end_block {
             self.check_rate_limit().await;
             let _permit = self.acquire_permit().await;
@@ -201,8 +201,10 @@ impl Datasource {
         let data = self
             .get_data_in_range(query.clone(), start_block, end_block)
             .await?;
+        //println!("DATA: {:?}", data);
         let fields = to_df::fields::extract_fields(&query);
         let dataset = to_df::fields::get_dataset(&query);
+
         let df = to_df::to_df(dataset, data, fields).unwrap();
         Ok(df)
     }
@@ -210,7 +212,9 @@ impl Datasource {
 
 #[cfg(test)]
 mod tests {
-    use crate::query_builder::{LogFields, LogRequest, QueryBuilder};
+    use crate::query_builder::{
+        LogFields, LogRequest, QueryBuilder, TransactionFields, TransactionRequest,
+    };
 
     use super::*;
     use serde_json::json;
@@ -334,13 +338,48 @@ mod tests {
         query_builder
             .select_log_fields(log_fields)
             .add_log(log_request);
+
         let query = query_builder.build();
         let start_block = 14000005;
         let end_block = 14000006;
-        println!("GQ");
+
         println!("QUERY: {:?}", query);
         let df = api.get_as_df(query, start_block, end_block).await.unwrap();
 
+        println!("{:?}", df);
+    }
+
+    #[tokio::test]
+    async fn test_tx_with_querybuilder() {
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
+
+        let tx_request = TransactionRequest {
+            to: Some(vec![
+                "0x0000000000000000000000000000000000000000".to_string()
+            ]),
+            ..Default::default()
+        };
+
+        let tx_fields = TransactionFields {
+            from: true,
+            to: true,
+            value: true,
+            ..Default::default()
+        };
+
+        let mut query_builder = QueryBuilder::new();
+        query_builder
+            .add_transaction(tx_request)
+            .select_tx_fields(tx_fields);
+
+        let query = query_builder.build();
+        let start_block = 14000005;
+        let end_block = 14000006;
+
+        println!("QUERY: {:?}", query);
+        let df = api.get_as_df(query, start_block, end_block).await.unwrap();
+        println!("TXS");
         println!("{:?}", df);
     }
 }

@@ -482,7 +482,7 @@ pub fn extract_fields<'a>(query: &'a Value) -> Vec<&'a str> {
         if let Some(log_fields) = fields.get("log") {
             return parse_field(log_fields);
         }
-        if let Some(tx_fields) = fields.get("tx") {
+        if let Some(tx_fields) = fields.get("transaction") {
             return parse_field(tx_fields);
         }
         if let Some(trace_fields) = fields.get("trace") {

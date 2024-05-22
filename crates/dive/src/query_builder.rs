@@ -45,6 +45,33 @@ pub struct LogFields {
     pub topics: bool,
     pub transaction_hash: bool,
 }
+#[derive(Serialize, Deserialize, Default)]
+pub struct TransactionFields {
+    pub id: bool,
+    pub transaction_index: bool,
+    pub from: bool,
+    pub to: bool,
+    pub hash: bool,
+    pub gas: bool,
+    pub gas_price: bool,
+    pub max_fee_per_gas: bool,
+    pub max_priority_fee_per_gas: bool,
+    pub input: bool,
+    pub nonce: bool,
+    pub value: bool,
+    pub v: bool,
+    pub r: bool,
+    pub s: bool,
+    pub y_parity: bool,
+    pub chain_id: bool,
+    pub gas_used: bool,
+    pub cumulative_gas_used: bool,
+    pub effective_gas_price: bool,
+    pub contract_address: bool,
+    pub type_: bool,
+    pub status: bool,
+    pub sighash: bool,
+}
 
 impl QueryBuilder {
     /// Creates a new instance of QueryBuilder
@@ -144,6 +171,90 @@ impl QueryBuilder {
             transaction.insert("sighash".to_string(), json!(sighash));
         }
         self.transactions.push(json!(transaction));
+        self
+    }
+
+    pub fn select_tx_fields(&mut self, tx_fields: TransactionFields) -> &mut Self {
+        let mut tx_select = Map::new();
+
+        if tx_fields.id {
+            tx_select.insert("id".to_string(), json!(true));
+        }
+        if tx_fields.transaction_index {
+            tx_select.insert("transaction_index".to_string(), json!(true));
+        }
+        if tx_fields.from {
+            tx_select.insert("from".to_string(), json!(true));
+        }
+        if tx_fields.to {
+            tx_select.insert("to".to_string(), json!(true));
+        }
+        if tx_fields.hash {
+            tx_select.insert("hash".to_string(), json!(true));
+        }
+        if tx_fields.gas {
+            tx_select.insert("gas".to_string(), json!(true));
+        }
+        if tx_fields.gas_price {
+            tx_select.insert("gas_price".to_string(), json!(true));
+        }
+        if tx_fields.max_fee_per_gas {
+            tx_select.insert("max_fee_per_gas".to_string(), json!(true));
+        }
+        if tx_fields.max_priority_fee_per_gas {
+            tx_select.insert("max_priority_fee_per_gas".to_string(), json!(true));
+        }
+        if tx_fields.input {
+            tx_select.insert("input".to_string(), json!(true));
+        }
+        if tx_fields.nonce {
+            tx_select.insert("nonce".to_string(), json!(true));
+        }
+        if tx_fields.value {
+            tx_select.insert("value".to_string(), json!(true));
+        }
+        if tx_fields.v {
+            tx_select.insert("v".to_string(), json!(true));
+        }
+        if tx_fields.r {
+            tx_select.insert("r".to_string(), json!(true));
+        }
+        if tx_fields.s {
+            tx_select.insert("s".to_string(), json!(true));
+        }
+        if tx_fields.y_parity {
+            tx_select.insert("y_parity".to_string(), json!(true));
+        }
+        if tx_fields.chain_id {
+            tx_select.insert("chain_id".to_string(), json!(true));
+        }
+        if tx_fields.gas_used {
+            tx_select.insert("gas_used".to_string(), json!(true));
+        }
+        if tx_fields.cumulative_gas_used {
+            tx_select.insert("cumulative_gas_used".to_string(), json!(true));
+        }
+        if tx_fields.effective_gas_price {
+            tx_select.insert("effective_gas_price".to_string(), json!(true));
+        }
+        if tx_fields.contract_address {
+            tx_select.insert("contract_address".to_string(), json!(true));
+        }
+        if tx_fields.type_ {
+            tx_select.insert("type".to_string(), json!(true));
+        }
+        if tx_fields.status {
+            tx_select.insert("status".to_string(), json!(true));
+        }
+        if tx_fields.sighash {
+            tx_select.insert("sighash".to_string(), json!(true));
+        }
+
+        if !tx_select.is_empty() {
+            let mut select = self.select.take().unwrap_or_default();
+            select.insert("transaction".to_string(), json!(tx_select));
+            self.select = Some(select);
+        }
         self
     }
 

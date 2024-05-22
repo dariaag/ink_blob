@@ -31,6 +31,7 @@ pub fn to_df(
         .into_iter()
         .map(|(name, data)| (name.to_string(), data))
         .collect();
+
     //put loop inside func, return mutable reference to fieldmap
     field_map = process_json_object(json_data, field_map, &fields, &dataset).unwrap(); //todo change to anyhow
                                                                                        //create series from fields
