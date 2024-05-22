@@ -1,6 +1,6 @@
 # Datasource Library
 
-This Rust library provides a way to interact with a remote API to fetch blockchain data, with support for rate limiting and concurrency control. It includes tools to build complex queries and convert the data into a Polars DataFrame. The library is a work in progeress. Feel free to raise an issue or drop a line on Twitter if you have any problems or suggestions.
+This Rust library provides a way to interact with [Subsquid](docs.subsquid.io) datalake API to fetch blockchain data, with support for rate limiting and concurrency control. It includes tools to build complex queries and convert the data into a Polars DataFrame. The library is a work in progeress. Feel free to raise an issue or drop a line on Twitter if you have any problems or suggestions.
 
 ## Features
 
