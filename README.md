@@ -199,5 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - [ ] traces
 - [ ] state diffs
 - [ ] joint datasets
+- [ ] save to parquet
+- [ ] better interface
 - [ ] CLI
 - [ ] progress bar
