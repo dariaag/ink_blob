@@ -10,10 +10,14 @@ use polars::prelude::*;
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
+
 use tokio::sync::Semaphore;
 use utils::add_from_block;
+
+/// Configuration for the `Datasource` which includes base URL, maximum concurrent requests,
+/// rate limiter, and semaphore for limiting concurrent operations.
 #[derive(Clone, Debug)]
-pub struct SubsquidApiConfig {
+pub struct DatasourceConfig {
     pub base_url: String,
     pub max_concurrent_requests: usize,
     pub rate_limiter:
@@ -21,7 +25,14 @@ pub struct SubsquidApiConfig {
     pub semaphore: Option<Arc<Semaphore>>,
 }
 
-impl SubsquidApiConfig {
+impl DatasourceConfig {
+    /// Creates a new `DatasourceConfig` with the specified base URL and maximum concurrent requests.
+    ///
+    /// # Examples
+    ///
+    /// no_run
+    /// let config = DatasourceConfig::new("https://api.example.com".to_string(), 10);
+    ///
     pub fn new(base_url: String, max_concurrent_requests: usize) -> Self {
         let semaphore = Arc::new(Semaphore::new(max_concurrent_requests));
         let rate_limiter = None; // Configure as needed
@@ -34,17 +45,34 @@ impl SubsquidApiConfig {
     }
 }
 
-pub struct SubsquidApi {
+/// Datasource struct to interact with the API, perform rate-limited requests,
+/// and fetch data as JSON or Polars DataFrame.
+pub struct Datasource {
     client: Client,
-    config: SubsquidApiConfig,
+    config: DatasourceConfig,
 }
 
-impl SubsquidApi {
-    pub fn new(config: SubsquidApiConfig) -> Self {
+impl Datasource {
+    /// Creates a new `Datasource` with the specified configuration.
+    ///
+    /// # Examples
+    ///
+    /// no_run
+    /// let config = DatasourceConfig::new("https://api.example.com".to_string(), 10);
+    /// let datasource = Datasource::new(config);
+    ///
+    pub fn new(config: DatasourceConfig) -> Self {
         let client = Client::new();
         Self { client, config }
     }
 
+    /// Retrieves the current dataset height from the API.
+    ///
+    /// # Examples
+    ///
+    /// no_run
+    /// let height = datasource.get_dataset_height().await?;
+    ///
     pub async fn get_dataset_height(&self) -> Result<u64, Error> {
         let url = format!("{}/height", self.config.base_url);
 
@@ -55,6 +83,13 @@ impl SubsquidApi {
             .ok_or_else(|| Error::msg("Invalid response format"))
     }
 
+    /// Retrieves the worker URL for a specific block number.
+    ///
+    /// # Examples
+    ///
+    /// no_run
+    /// let worker_url = datasource.get_worker_url(12345).await?;
+    ///
     pub async fn get_worker_url(&self, block_number: u64) -> Result<String, Error> {
         let url = format!("{}/{}/worker", self.config.base_url, block_number);
 
@@ -63,6 +98,14 @@ impl SubsquidApi {
             .parse()
             .map_err(|e| Error::msg(format!("Error parsing worker URL: {}", e)))
     }
+
+    /// Fetches data from the specified block using the worker URL and query.
+    ///
+    /// # Examples
+    ///
+    /// no_run
+    /// let (data, last_block) = datasource.fetch_data(12345, "https://worker.url", query).await?;
+    ///
     pub async fn fetch_data(
         &self,
         from_block: u64,
@@ -79,7 +122,9 @@ impl SubsquidApi {
             .text()
             .await?;
         let data: Value = serde_json::from_str(&response)?;
-
+        if data.as_array().is_none() {
+            println!("DATA: {:?}", data);
+        }
         let blocks = data
             .as_array()
             .ok_or_else(|| Error::msg("Invalid JSON format: Expected an array"))?;
@@ -92,6 +137,7 @@ impl SubsquidApi {
         Ok((blocks.to_vec(), last_block))
     }
 
+    /// Acquires a permit for making a request, respecting the semaphore limits.
     async fn acquire_permit(&self) -> Option<tokio::sync::OwnedSemaphorePermit> {
         if let Some(semaphore) = &self.config.semaphore {
             semaphore.clone().acquire_owned().await.ok()
@@ -100,12 +146,20 @@ impl SubsquidApi {
         }
     }
 
+    /// Checks the rate limiter and waits if necessary.
     async fn check_rate_limit(&self) {
         if let Some(rate_limiter) = &self.config.rate_limiter {
             rate_limiter.until_ready().await;
         }
     }
 
+    /// Retrieves data in the specified block range.
+    ///
+    /// # Examples
+    ///
+    /// no_run
+    /// let data = datasource.get_data_in_range(query, 100, 200).await?;
+    ///
     pub async fn get_data_in_range(
         &self,
         query: Value,
@@ -114,7 +168,7 @@ impl SubsquidApi {
     ) -> Result<Vec<Value>, Error> {
         let mut current_block = start_block;
         let mut all_data = Vec::new();
-
+        println!("QUERY: {:?}", query);
         while current_block <= end_block {
             self.check_rate_limit().await;
             let _permit = self.acquire_permit().await;
@@ -131,21 +185,33 @@ impl SubsquidApi {
         Ok(all_data)
     }
 
-    /*   pub async fn get_as_df(
+    /// Retrieves data in the specified block range and converts it to a Polars DataFrame.
+    ///
+    /// # Examples
+    ///
+    /// no_run
+    /// let df = datasource.get_as_df(query, 100, 200).await?;
+    ///
+    pub async fn get_as_df(
         &self,
         query: Value,
         start_block: u64,
         end_block: u64,
     ) -> Result<DataFrame, Error> {
         let data = self
-            .get_data_in_range(query, start_block, end_block)
+            .get_data_in_range(query.clone(), start_block, end_block)
             .await?;
-        let df =
-
-    } */
+        let fields = to_df::fields::extract_fields(&query);
+        let dataset = to_df::fields::get_dataset(&query);
+        let df = to_df::to_df(dataset, data, fields).unwrap();
+        Ok(df)
+    }
 }
+
 #[cfg(test)]
 mod tests {
+    use crate::query_builder::{LogFields, LogRequest, QueryBuilder};
+
     use super::*;
     use serde_json::json;
     use tokio::runtime::Runtime;
@@ -154,8 +220,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_dataset_height() {
-        let config = SubsquidApiConfig::new(BASE_URL.to_string(), 10);
-        let api = SubsquidApi::new(config);
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
 
         let height = api.get_dataset_height().await;
         assert!(height.is_ok());
@@ -165,8 +231,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_worker_url() {
-        let config = SubsquidApiConfig::new(BASE_URL.to_string(), 10);
-        let api = SubsquidApi::new(config);
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
 
         let block_number = 1;
         let worker_url = api.get_worker_url(block_number).await;
@@ -180,8 +246,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_fetch_data() {
-        let config = SubsquidApiConfig::new(BASE_URL.to_string(), 10);
-        let api = SubsquidApi::new(config);
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
 
         let worker_url = api.get_worker_url(1).await.unwrap();
         let query = json!({});
@@ -193,8 +259,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_data_in_range() {
-        let config = SubsquidApiConfig::new(BASE_URL.to_string(), 10);
-        let api = SubsquidApi::new(config);
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
 
         let query = json!({});
         let start_block = 1;
@@ -210,5 +276,71 @@ mod tests {
             last_block >= end_block,
             "Last block should be at least the end block"
         );
+    }
+
+    #[tokio::test]
+    async fn test_get_as_df() {
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
+
+        let query = json!({"logs": [
+              {
+                "address": ["0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"],
+                "topic0": [
+                  "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
+                ],
+                "transaction": true
+              }
+            ],
+            "fields": {
+
+              "log": {
+                "address": true,
+                "topics": true,
+                "data": true
+              }
+
+            },
+        });
+        println!("GOOD QUERY: {:?}", query);
+        let start_block = 14000000;
+        let end_block = 14000001;
+        let df = api.get_as_df(query, start_block, end_block).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_with_querybuilder() {
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
+
+        let log_request = LogRequest {
+            address: Some(vec![
+                "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48".to_string()
+            ]),
+            topic0: Some(vec![
+                "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".to_string(),
+            ]),
+            ..Default::default()
+        };
+        let log_fields = LogFields {
+            address: true,
+            topics: true,
+            data: true,
+            log_index: true,
+            ..Default::default()
+        };
+
+        let mut query_builder = QueryBuilder::new();
+        query_builder
+            .select_log_fields(log_fields)
+            .add_log(log_request);
+        let query = query_builder.build();
+        let start_block = 14000005;
+        let end_block = 14000006;
+        println!("GQ");
+        println!("QUERY: {:?}", query);
+        let df = api.get_as_df(query, start_block, end_block).await.unwrap();
+
+        println!("{:?}", df);
     }
 }

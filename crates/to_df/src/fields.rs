@@ -491,7 +491,19 @@ pub fn extract_fields<'a>(query: &'a Value) -> Vec<&'a str> {
     }
     Vec::new()
 }
+pub fn get_dataset<'a>(query: &'a Value) -> Dataset {
+    if let Some(dataset) = query.get("transactions") {
+        return Dataset::Transactions;
+    }
+    if let Some(dataset) = query.get("blocks") {
+        return Dataset::Blocks;
+    }
+    if let Some(dataset) = query.get("logs") {
+        return Dataset::Logs;
+    }
 
+    panic!("Dataset not found");
+}
 pub fn parse_field<'a>(field: &'a Value) -> Vec<&'a str> {
     let mut set = HashSet::new();
     if let Some(obj) = field.as_object() {

@@ -1,7 +1,7 @@
 pub mod fields;
 
 //use polars::prelude::*;
-use fields::Dataset;
+use fields::{extract_fields, Dataset};
 
 use polars::prelude::{DataFrame, ParquetCompression, ParquetWriter, Series};
 use serde_json::Value;
@@ -105,9 +105,7 @@ fn process_json_object(
 mod tests {
     use super::*;
     use crate::fields::{extract_fields, Dataset}; // Add the missing import for the 'dive' crate
-    extern crate dive;
-    use dive::datasource::{SubsquidApi, SubsquidApiConfig};
-    // Add the missing import for the 'dive' crate
+                                                  // Add the missing import for the 'dive' crate
     use serde_json::json;
     use tokio::runtime::Runtime;
 
@@ -154,7 +152,7 @@ mod tests {
         assert_eq!(df.shape().1, 4); // 4 columns
     }
 
-    #[tokio::test]
+    /* #[tokio::test]
     async fn test_with_archive() {
         let dataset = Dataset::Logs;
         let query = json!({"logs": [
@@ -178,8 +176,8 @@ mod tests {
             //"includeAllBlocks": true,
         });
         const BASE_URL: &str = "https://v2.archive.subsquid.io/network/ethereum-mainnet";
-        let config = SubsquidApiConfig::new(BASE_URL.to_string(), 10);
-        let api = SubsquidApi::new(config);
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource: :new(config);
         let data = api
             .get_data_in_range(query.clone(), 14000000, 14000010)
             .await
@@ -188,5 +186,5 @@ mod tests {
         let fields = fields::extract_fields(&query);
         let df = to_df(dataset, data, fields).unwrap();
         println!("{:?}", df);
-    }
+    } */
 }

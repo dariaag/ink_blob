@@ -13,3 +13,6 @@ tokio = { workspace = true }
 governor = { workspace = true }
 indexmap = { workspace = true }
 polars = { workspace = true }
+to_df = { path = "../to_df" }
+serde = { workspace = true }
+serde_json_diff = { workspace = true }
