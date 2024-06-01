@@ -19,3 +19,11 @@ pub fn add_from_block(mut json_value: Value, from_block_value: u64) -> Value {
     }
     json_value
 }
+
+pub fn compute_chunk_ranges(start: u64, end: u64, chunk_size: u64) -> Vec<(u64, u64)> {
+    // Divide the total range into smaller ranges of chunk_size
+    (start..end)
+        .step_by(chunk_size as usize)
+        .map(|start| (start, std::cmp::min(start + chunk_size, end)))
+        .collect()
+}

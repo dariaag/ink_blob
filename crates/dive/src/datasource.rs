@@ -7,13 +7,14 @@ use governor::{
     RateLimiter,
 };
 use polars::prelude::*;
+use rayon::prelude::*;
 use reqwest::Client;
 use serde_json::Value;
 use std::sync::Arc;
+use tokio::sync::{futures, Semaphore};
+use tokio::task;
 
-use tokio::sync::Semaphore;
 use utils::add_from_block;
-
 /// Configuration for the `Datasource` which includes base URL, maximum concurrent requests,
 /// rate limiter, and semaphore for limiting concurrent operations.
 #[derive(Clone, Debug)]
@@ -122,12 +123,13 @@ impl Datasource {
             .text()
             .await?;
         let data: Value = serde_json::from_str(&response)?;
-        /* if data.as_array().is_none() {
+        if data.as_array().is_none() {
             println!("DATA: {:?}", data);
-        } */
+        }
+
         let blocks = data
             .as_array()
-            .ok_or_else(|| Error::msg("Invalid JSON format: Expected an array"))?;
+            .ok_or_else(|| Error::msg("Invalid JSON format: Expected an array got {:?}"))?;
         let last_block = blocks
             .last()
             .and_then(|b| b["header"]["number"].as_u64())
@@ -203,17 +205,31 @@ impl Datasource {
             .await?;
         //println!("DATA: {:?}", data);
         let fields = to_df::fields::extract_fields(&query);
+        println!("FIELDS: {:?}", fields);
         let dataset = to_df::fields::get_dataset(&query);
 
         let df = to_df::to_df(dataset, data, fields).unwrap();
         Ok(df)
+    }
+    pub async fn get_parallelel_chunks(
+        &self,
+        query: Value,
+        start_block: u64,
+        end_block: u64,
+        chunk_size: u64,
+    ) -> Result<Vec<DataFrame>, Error> {
+        let ranges = utils::compute_chunk_ranges(start_block, end_block, chunk_size);
+        let mut dfs = Vec::new();
+
+        Ok(dfs)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::query_builder::{
-        LogFields, LogRequest, QueryBuilder, TransactionFields, TransactionRequest,
+        self, LogFields, LogRequest, QueryBuilder, TraceFields, TraceRequest, TransactionFields,
+        TransactionRequest,
     };
 
     use super::*;
@@ -306,7 +322,7 @@ mod tests {
 
             },
         });
-        println!("GOOD QUERY: {:?}", query);
+        //println!("GOOD QUERY: {:?}", query);
         let start_block = 14000000;
         let end_block = 14000001;
         let df = api.get_as_df(query, start_block, end_block).await.unwrap();
@@ -343,10 +359,10 @@ mod tests {
         let start_block = 14000005;
         let end_block = 14000006;
 
-        println!("QUERY: {:?}", query);
+        //println!("QUERY: {:?}", query);
         let df = api.get_as_df(query, start_block, end_block).await.unwrap();
 
-        println!("{:?}", df);
+        // println!("{:?}", df);
     }
 
     #[tokio::test]
@@ -377,9 +393,40 @@ mod tests {
         let start_block = 14000005;
         let end_block = 14000006;
 
-        println!("QUERY: {:?}", query);
+        //println!("QUERY: {:?}", query);
         let df = api.get_as_df(query, start_block, end_block).await.unwrap();
-        println!("TXS");
+        //println!("TXS");
+        //println!("{:?}", df);
+    }
+
+    #[tokio::test]
+    async fn test_trace_with_querybuilder() {
+        let config = DatasourceConfig::new(BASE_URL.to_string(), 10);
+        let api = Datasource::new(config);
+
+        let trace_request = TraceRequest {
+            type_: Some(vec!["call".to_string()]),
+            ..Default::default()
+        };
+
+        let trace_fields = TraceFields {
+            transaction_index: true,
+            type_: true,
+            trace_address: true,
+            gas_used: true,
+
+            ..Default::default()
+        };
+        let mut query_builder = QueryBuilder::new();
+        query_builder
+            .add_trace(trace_request)
+            .select_trace_fields(trace_fields);
+        let query = query_builder.build();
+        let start_block = 14000005;
+        let end_block = 14000006;
+        println!("TRACE QUERY: {:?}", query);
+        let df = api.get_as_df(query, start_block, end_block).await.unwrap();
+        println!("TRACES");
         println!("{:?}", df);
     }
 }

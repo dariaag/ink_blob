@@ -16,3 +16,5 @@ polars = { workspace = true }
 to_df = { path = "../to_df" }
 serde = { workspace = true }
 serde_json_diff = { workspace = true }
+rayon = { workspace = true }
+futures = { workspace = true }
